@@ -47,7 +47,11 @@ describe("pages/api/widgets/proxmox", () => {
   });
 
   it("builds the PVEAPIToken header and returns aggregated cluster stats", async () => {
-    getPrivateWidgetOptions.mockResolvedValueOnce({ url: "https://proxmox.host", username: "api@pam!homepage", password: "secret" });
+    getPrivateWidgetOptions.mockResolvedValueOnce({
+      url: "https://proxmox.host",
+      username: "api@pam!homepage",
+      password: "secret",
+    });
     httpProxy.mockResolvedValueOnce([200, null, Buffer.from(JSON.stringify({ data: clusterResources }))]);
 
     const req = { query: { index: "0" } };
