@@ -45,6 +45,7 @@ next-env.d.ts
 
 # IDEs
 /.idea/
+/.claude/
 
 # Zensical documentation
 site*/
