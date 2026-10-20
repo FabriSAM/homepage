@@ -2,9 +2,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { join } from "path";
 
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 import { CONF_DIR } from "utils/config/config";
+import { loadYaml } from "utils/config/yaml";
 
 const PROTOCOL_VERSION = "2025-11-25";
 const SERVER_INFO = {
@@ -117,9 +118,19 @@ function readConfig(file) {
   return existsSync(path) ? readFileSync(path, "utf8") : "";
 }
 
+const PLACEHOLDER_PATTERN = /(["']?)\{\{([^{}]*)\}\}\1/g;
+const HOMEPAGE_KEY_PATTERN = /HOMEPAGE_(?:VAR|FILE)_/;
+const PLACEHOLDER_TOKEN_PATTERN = /__HOMEPAGE_MCP_PLACEHOLDER_(\d+)__/g;
+
+// mask {{HOMEPAGE_*}} placeholders so they survive a parse/dump round-trip
 function parseYamlConfig(file) {
-  const parsed = yaml.load(readConfig(file) || "");
-  return parsed ?? [];
+  const placeholders = [];
+  const masked = readConfig(file).replace(PLACEHOLDER_PATTERN, (match, quote, key) => {
+    if (!HOMEPAGE_KEY_PATTERN.test(key)) return match;
+    placeholders.push(match);
+    return `__HOMEPAGE_MCP_PLACEHOLDER_${placeholders.length - 1}__`;
+  });
+  return { data: loadYaml(masked) ?? [], placeholders };
 }
 
 function validateYaml(file, content) {
@@ -128,7 +139,7 @@ function validateYaml(file, content) {
   }
 
   try {
-    yaml.load(content || "");
+    loadYaml(content || "");
     return { valid: true };
   } catch (error) {
     return {
@@ -165,8 +176,10 @@ function ensureWriteEnabled() {
   return null;
 }
 
-function dumpYamlConfig(file, content) {
-  const dumped = yaml.dump(content, { lineWidth: -1, noRefs: true });
+function dumpYamlConfig(file, content, placeholders) {
+  const dumped = yaml
+    .dump(content, { lineWidth: -1, noRefs: true })
+    .replace(PLACEHOLDER_TOKEN_PATTERN, (match, index) => placeholders[index] ?? match);
   mkdirSync(CONF_DIR, { recursive: true });
   writeFileSync(configPath(file), dumped, "utf8");
   return dumped;
@@ -191,7 +204,7 @@ function addService(args) {
     };
   }
 
-  const services = parseYamlConfig("services.yaml");
+  const { data: services, placeholders } = parseYamlConfig("services.yaml");
   if (!Array.isArray(services)) {
     throw new Error("services.yaml must contain a top-level array");
   }
@@ -219,7 +232,7 @@ function addService(args) {
   }
 
   group[groupName].push({ [serviceName]: serviceConfig });
-  const content = dumpYamlConfig("services.yaml", services);
+  const content = dumpYamlConfig("services.yaml", services, placeholders);
   return textContent(
     JSON.stringify({ written: "services.yaml", added: { group: groupName, service: serviceName }, content }, null, 2),
   );
@@ -241,7 +254,7 @@ function addInfoWidget(args) {
     };
   }
 
-  const widgets = parseYamlConfig("widgets.yaml");
+  const { data: widgets, placeholders } = parseYamlConfig("widgets.yaml");
   if (!Array.isArray(widgets)) {
     throw new Error("widgets.yaml must contain a top-level array");
   }
@@ -251,7 +264,7 @@ function addInfoWidget(args) {
   assertPlainObject(options, "options");
 
   widgets.push({ [type]: options });
-  const content = dumpYamlConfig("widgets.yaml", widgets);
+  const content = dumpYamlConfig("widgets.yaml", widgets, placeholders);
   return textContent(JSON.stringify({ written: "widgets.yaml", added: { type }, content }, null, 2));
 }
 

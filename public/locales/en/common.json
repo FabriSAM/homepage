@@ -39,7 +39,9 @@
         "wait": "Please wait"
     },
     "search": {
-        "placeholder": "Search…"
+        "placeholder": "Search…",
+        "provider": "Search engine: {{name}}",
+        "select_provider": "Select search engine"
     },
     "resources": {
         "cpu": "CPU",
@@ -97,7 +99,12 @@
         "unhealthy": "Unhealthy",
         "not_found": "Not Found",
         "exited": "Exited",
-        "partial": "Partial"
+        "partial": "Partial",
+        "created": "Created",
+        "paused": "Paused",
+        "restarting": "Restarting",
+        "removing": "Removing",
+        "dead": "Dead"
     },
     "ping": {
         "error": "Error",
@@ -132,7 +139,8 @@
         "movies": "Movies",
         "series": "Series",
         "episodes": "Episodes",
-        "songs": "Songs"
+        "songs": "Songs",
+        "albums": "Albums"
     },
     "esphome": {
         "offline": "Offline",
@@ -247,6 +255,16 @@
         "upload": "Upload",
         "leech": "Leech",
         "seed": "Seed"
+    },
+    "qui": {
+        "leech": "Leech",
+        "download": "Download",
+        "seed": "Seed",
+        "upload": "Upload",
+        "total": "Total",
+        "errored": "Errored",
+        "ratio": "Ratio",
+        "freeSpace": "Free"
     },
     "qnap": {
         "cpuUsage": "CPU Usage",
@@ -470,7 +488,8 @@
     "authentik": {
         "users": "Users",
         "loginsLast24H": "Logins (24h)",
-        "failedLoginsLast24H": "Failed Logins (24h)"
+        "failedLoginsLast24H": "Failed Logins (24h)",
+        "authorizationsLast24H": "Auths (24h)"
     },
     "proxmox": {
         "title": "Proxmox",
@@ -772,7 +791,8 @@
         "queue": "Queue",
         "processing": "Processing",
         "processed": "Processed",
-        "time": "Time"
+        "time": "Time",
+        "failed": "Failed"
     },
     "firefly": {
         "networth": "Net Worth",
@@ -848,6 +868,14 @@
     "booklore": {
         "libraries": "Libraries",
         "books": "Books",
+        "reading": "Reading",
+        "finished": "Finished"
+    },
+    "bookorbit": {
+        "books": "Books",
+        "authors": "Authors",
+        "series": "Series",
+        "storage": "Storage",
         "reading": "Reading",
         "finished": "Finished"
     },
@@ -1250,5 +1278,8 @@
         "wanted": "Wanted",
         "queued": "Queued",
         "leagues": "Leagues"
+    },
+    "feed": {
+        "noItems": "No items"
     }
 }
