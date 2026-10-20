@@ -37,6 +37,7 @@ describe("middleware", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
+    delete process.env.HOMEPAGE_ALLOWED_HOSTS;
     console.error = originalConsoleError;
   });
 
@@ -100,6 +101,31 @@ describe("middleware", () => {
     expect(res.type).toBe("next");
   });
 
+  it("allows custom CSS without auth so it can style the signin page", async () => {
+    process.env.HOMEPAGE_AUTH_ENABLED = "true";
+    process.env.HOMEPAGE_AUTH_SECRET = "secret";
+
+    const middleware = await loadMiddleware();
+    const res = await middleware(createReq("localhost:3000", "http://localhost:3000/api/config/custom.css"));
+
+    expect(getToken).not.toHaveBeenCalled();
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(res.type).toBe("next");
+  });
+
+  it("continues to require auth for custom JavaScript", async () => {
+    process.env.HOMEPAGE_AUTH_ENABLED = "true";
+    process.env.HOMEPAGE_AUTH_SECRET = "secret";
+
+    getToken.mockResolvedValueOnce(null);
+
+    const middleware = await loadMiddleware();
+    const res = await middleware(createReq("localhost:3000", "http://localhost:3000/api/config/custom.js"));
+
+    expect(getToken).toHaveBeenCalled();
+    expect(res.type).toBe("redirect");
+  });
+
   it.each(["false", "0", "no", "off", ""])("treats HOMEPAGE_AUTH_ENABLED=%j as disabled", async (value) => {
     process.env.HOMEPAGE_AUTH_ENABLED = value;
 
@@ -107,6 +133,29 @@ describe("middleware", () => {
     const res = await middleware(createReq("localhost:3000", "http://localhost:3000/some"));
 
     expect(getToken).not.toHaveBeenCalled();
+    expect(res.type).toBe("next");
+  });
+
+  it.each([
+    ["NEXTAUTH_URL", "https://homepage.example", true],
+    ["NEXTAUTH_URL", "HTTPS://homepage.example", true],
+    ["NEXTAUTH_URL", "  https://homepage.example  ", true],
+    ["NEXTAUTH_URL", "HTTP://homepage.example", false],
+    ["HOMEPAGE_EXTERNAL_URL", "HTTPS://homepage.example", true],
+    ["HOMEPAGE_EXTERNAL_URL", "  https://homepage.example  ", true],
+    ["HOMEPAGE_EXTERNAL_URL", "homepage.example", false],
+  ])("reads the session cookie NextAuth sets when %s is %j", async (variable, url, secure) => {
+    process.env.HOMEPAGE_AUTH_ENABLED = "true";
+    process.env.HOMEPAGE_AUTH_SECRET = "secret";
+    delete process.env.NEXTAUTH_URL;
+    process.env[variable] = url;
+
+    getToken.mockResolvedValueOnce({ sub: "user" });
+
+    const middleware = await loadMiddleware();
+    const res = await middleware(createReq("localhost:3000", "http://localhost:3000/"));
+
+    expect(getToken).toHaveBeenCalledWith(expect.objectContaining({ secureCookie: secure }));
     expect(res.type).toBe("next");
   });
 
@@ -122,10 +171,23 @@ describe("middleware", () => {
     expect(getToken).toHaveBeenCalledWith({
       req: expect.objectContaining({ url: "http://localhost:3000/some" }),
       secret: "secret",
+      secureCookie: false,
     });
     expect(NextResponse.redirect).toHaveBeenCalled();
     expect(res.type).toBe("redirect");
     expect(String(res.url)).toContain("/auth/signin");
+  });
+
+  it("preserves the requested path and query as the callback url", async () => {
+    process.env.HOMEPAGE_AUTH_ENABLED = "true";
+    process.env.HOMEPAGE_AUTH_SECRET = "secret";
+
+    getToken.mockResolvedValueOnce(null);
+
+    const middleware = await loadMiddleware();
+    const res = await middleware(createReq("localhost:3000", "http://localhost:3000/some/page?tab=2"));
+
+    expect(new URL(res.url).searchParams.get("callbackUrl")).toBe("/some/page?tab=2");
   });
 
   it("allows requests when auth is enabled and a token is present", async () => {
